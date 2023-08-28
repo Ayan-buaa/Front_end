@@ -47,7 +47,7 @@ const routes = [
   {
     path: 'documentEditing',
     name: 'documentEditing',
-    component: () => import('../views/DocumentEditing.vue')
+    component: () => import('../views/DocumentEditingView.vue')
   }
 ]
 
