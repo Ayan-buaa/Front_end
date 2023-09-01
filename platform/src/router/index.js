@@ -40,6 +40,11 @@ const routes = [
     component: () => import('../views/ItemManageView.vue')
   },
   {
+    path: '/itemDesign/:teamid/:taskid/',
+    name: 'sharedPage',
+    component: () => import('../views/ItemDesignView.vue')
+  },
+  {
     path: '/itemDesign',
     name: 'itemDesign',
     component: () => import('../views/ItemDesignView.vue')

@@ -11,6 +11,8 @@ Vue.use(ElementUI);
 Vue.config.productionTip = false
 
 Vue.prototype.$axios = axios
+axios.defaults.baseURL='http://127.0.0.1:8000/'
+Vue.prototype.$http=axios
 
 Vue.directive('focus', {
   inserted: function(el) {

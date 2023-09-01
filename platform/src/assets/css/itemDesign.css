@@ -1,3 +1,4 @@
+
 #item-design{
     user-select: none;
     height: inherit;
@@ -7,11 +8,11 @@
 }
 .el-row{
     text-align: center;
-    vertical-align: center;
+    vertical-align: middle;
 }
 .gap1{
     text-align: left;
-    margin-top: 12px;
+    margin-top: 0.7%;
     height: 20px;
 }
 .gap2{
@@ -35,14 +36,14 @@
 .editor {
     position: absolute;
     z-index:20;
-    background-color: rgba(2, 255, 175, 0.711);
+    background-color: rgba(196, 214, 208, 0.864);
     height: 92%;
     width:300px;
     right:0px;
 }
 .tools {
-    z-index:5;
-    background-color: rgba(255, 145, 207, 0.751);
+    z-index:20;
+    background-color: rgba(214, 197, 207, 0.826);
 }
 .tool {
     
@@ -168,6 +169,7 @@
     top:0;
 }
 .delete-button{
+    z-index:20;
     pointer-events: all;
     position: relative;
     top:-50px;
@@ -177,4 +179,10 @@
     margin-top:5px;
     text-align: left;
     font-size: 20px;
+}
+.input-text{
+    width:100%;
+}
+.save-button {
+    margin-left:20px;
 }
