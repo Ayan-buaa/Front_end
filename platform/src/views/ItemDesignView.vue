@@ -1,4 +1,5 @@
 <template>
+  <!-- 请查看270行的说明 -->
   <div id="item-design">
     <div class="canvas-mark" ref="canvasMask">
       <div ref="select" class="select-border" v-if="this.$data.currentComponent && (!this.$data.nonname)">
@@ -32,7 +33,7 @@
       <el-popconfirm
         v-if="!this.$data.nonname"
         class="gap3"
-        @confirm="removeAllComponents()"
+        @confirm="removeAllComponents(true)"
         confirm-button-text='清除'
         cancel-button-text='取消'
         icon="el-icon-info"
@@ -65,13 +66,25 @@
       </el-popover>
       </el-col>
       <el-col :span="4" v-if="!this.$data.nonname">
-      <DoubleClick :title="this.$data.title" class="title-content" @getMsg="getTitle"/>
+      <DoubleClick ref="title" class="title-content" @getMsg="getTitle"/>
       </el-col>
       <el-col :span="4" v-else class="gap1" :offset="4"> 
         <span style="font-size:30px;">{{this.$data.title}}</span>
       </el-col>
       <el-col :span="6" class="gap1">
-        <el-button type="primary" icon="el-icon-plus" :disabled="this.$data.selected" @click="newPage()" v-if="!this.$data.nonname"></el-button>
+        <el-popover
+        v-if="!this.$data.nonname"
+        class="gap3"
+        placement="bottom"
+        width="50"
+        height="100"
+        trigger="manual"
+        v-model="paging"
+      >
+        <el-row class="gap2"><el-button type="primary" @click="newPage('copy')">新建</el-button></el-row>
+        <el-row class="gap2"><el-button type="primary" @click="newPage('appStore')">模板-应用商城</el-button></el-row>
+        <el-button slot="reference"  type="primary" icon="el-icon-plus" :disabled="this.$data.selected" @click="paging=!paging" v-if="!this.$data.nonname"></el-button>
+      </el-popover>
         <el-button type="primary" icon="el-icon-back" @click="switchPage($data.currentCanvasIndex-1)" :disabled="$data.currentCanvasIndex<=0"></el-button>
         <el-popover
         v-if="!this.$data.nonname"
@@ -110,9 +123,13 @@
     </el-col>
     </el-row>
     <el-container class="workplace">
-    <el-aside width="280px" class="tools" v-if="!this.$data.nonname"> 
+    <el-aside width="280px" class="tools" v-if="!this.$data.nonname && this.$data.toolopen"> 
     <div v-for="item in items" class="tool">
-      <p class="label">{{item.label}}</p>
+      <span class="label">{{item.label}}</span>
+      <el-tooltip effect="dark" :content="item.hint" placement="right" v-if="item.hint!=undefined">
+        <i class="el-icon-question"></i>
+      </el-tooltip>
+      <el-divider></el-divider>
       <el-divider></el-divider>
       <button class="toolkit" v-for="tool in item.tools" @click="changeCurrentTool(tool.props)">
         <div :class="$data.currentTool==tool.props?'tool-selected':'tool-plain'">
@@ -120,8 +137,14 @@
         <p class="tool-name">{{tool.props.name}}</p></div>
       </button>
     </div>
+    <el-divider></el-divider>
+    <el-divider></el-divider>
     <div v-for="dragtool in dragTools" class="tool">
-      <p class="label">{{dragtool.label}}</p>
+      <span class="label">{{dragtool.label}}</span>
+      <el-tooltip effect="dark" :content="dragtool.hint" placement="right" v-if="dragtool.hint!=undefined">
+        <i class="el-icon-question"></i>
+      </el-tooltip>
+      <el-divider></el-divider>
       <el-divider></el-divider>
         <button class="toolkit drag-tool" v-for="tool in dragtool.tools" @dblclick="startDrag(currentCanvasIndex,componentProps[tool.id])">
         <div>
@@ -129,10 +152,13 @@
         <p class="tool-name">{{componentProps[tool.id].name}}</p></div>
         </button>
     </div>
+    <el-divider></el-divider>
+    <el-divider></el-divider>
     </el-aside>
-    <div class="editor" v-if="this.$data.currentTool && (!this.$data.nonname)"> 
+    <el-button v-if="!this.$data.nonname" :icon="!toolopen?'el-icon-caret-right':'el-icon-caret-left'" @click="toolopen=!toolopen" :class="toolopen?'collapse-button left-side1':'collapse-button left-side2'"></el-button>
+    <el-button v-if="!this.$data.nonname" :icon="editoropen?'el-icon-caret-right':'el-icon-caret-left'" @click="editoropen=!editoropen" :class="editoropen?'collapse-button right-side1':'collapse-button right-side2'"></el-button>
+    <div class="editor" v-if="this.$data.currentTool && (!this.$data.nonname) && this.$data.editoropen"> 
       <el-row class="props-title">{{this.$data.currentTool.name}}</el-row>
-      <el-divider></el-divider>
       <el-row class="props-row" v-if="currentTool.size != undefined">
         <el-col class="props-label" :span="4">
           <span>粗细</span>
@@ -157,8 +183,8 @@
         <el-col :span="4">
           <el-switch
           v-model="shared"
-          active-color="#13ce66"
-          inactive-color="#ff4949" @change="setSharedStatus(shared)">
+          active-color="#3333ff"
+          inactive-color="#7f7f7f" @change="setSharedStatus(shared)">
         </el-switch>
       </el-col>
       </el-row>
@@ -169,7 +195,7 @@
         </el-col>
       </el-row>
     </div>
-    <div class="editor" v-else-if="this.$data.currentComponent && (!this.$data.nonname)"> 
+    <div class="editor" v-else-if="this.$data.currentComponent && (!this.$data.nonname) && this.$data.editoropen"> 
       <el-row class="props-title">{{this.$data.currentComponent.name}}</el-row>
       <el-divider></el-divider>
       <el-row class="props-row" v-if="currentComponent.locationX != undefined && currentComponent.locationY != undefined">
@@ -242,16 +268,21 @@ import Vue from 'vue'
 export default {
   data() {
     return {
-      teamId : this.$route.params.teamid == undefined ? 1 : this.$route.params.teamid,
-      taskId : this.$route.params.taskid == undefined ? 3 : this.$route.params.taskid,
+      //需要将以下三个字段teamid,taskid,authorization替换为注释的内容，并在跳转到/itemDesing的时候初始化[在mounted（580行）开头处进行]
+      teamId : this.$route.params.teamid == undefined ? 1 : this.$route.params.teamid,//teamId : this.$route.params.teamid
+      taskId : this.$route.params.taskid == undefined ? 3 : this.$route.params.taskid,//taskId : this.$route.params.taskid
+      task:'',
       nonname : this.$route.params.taskid != undefined || this.$route.params.teamid != undefined,
       shared : false,
+      paging : false,
       sharedURL :'',
       canvasInterface:false,
+      toolopen : true,
+      editoropen:true,
       config:{
         headers:{
           'Content-Type': 'application/json',
-          'Authorization' : this.$route.params.taskid != undefined || this.$route.params.teamid != undefined?'':'Token 752b7d9c1c60c9d528644928e3d428ec1040d749',
+          'Authorization' : this.$route.params.taskid != undefined || this.$route.params.teamid != undefined?'':'Token 752b7d9c1c60c9d528644928e3d428ec1040d749',//''
         }
       },
       recting:false,
@@ -298,17 +329,33 @@ export default {
           name:'画布',
           locationX:0,
           locationY:0,
-          height:480,
-          width:720,
+          height:720,
+          width:400,
           color:'#FFFFFF',
           ref:'',
           mainCanvas:'',
-          components:[],
+          components:[
+            {"locationX":40,"locationY":40,"height":30,"width":280,"ikey":"tool13"},
+            {"locationX":340,"locationY":35,"height":40,"width":40,"ikey":"tool5"},
+            {"locationX":70,"locationY":450,"height":60,"width":60,"ikey":"tool6"},
+            {"locationX":55,"locationY":520,"height":30,"width":90,"ikey":"tool4"},
+            {"locationX":172,"locationY":450,"height":60,"width":60,"ikey":"tool6"},
+            {"locationX":155,"locationY":520,"height":30,"width":90,"ikey":"tool4"},
+            {"locationX":274,"locationY":450,"height":60,"width":60,"ikey":"tool6"},
+            {"locationX":255,"locationY":520,"height":30,"width":90,"ikey":"tool4"},
+            {"locationX":70,"locationY":350,"height":60,"width":60,"ikey":"tool6"},
+            {"locationX":55,"locationY":420,"height":30,"width":90,"ikey":"tool4"},
+            {"locationX":50,"locationY":600,"height":40,"width":300,"ikey":"tool9"},
+            {"locationX":50,"locationY":120,"height":175,"width":300,"ikey":"tool14"},
+            {"locationX":50,"locationY":320,"height":250,"width":300,"ikey":"tool11"},
+            {"locationX":0,"locationY":660,"height":60,"width":400,"ikey":"tool11"},
+            {"locationX":180,"locationY":670,"height":40,"width":40,"ikey":"tool5"}],
         }
       },
       items:[
         {
           label:'基本工具',
+          hint:'该画布工具仅作为辅助排版使用，并不会储存',
           tools:[{
             url:require('../assets/img/pencil.png'),
             props:{
@@ -356,6 +403,7 @@ export default {
       // },
       {
         label:'组件',
+        hint:'双击新建组件',
         tools:[{
             id:'tool1',
             url:require('../assets/img/button1.png'),
@@ -370,22 +418,34 @@ export default {
             url:require('../assets/img/text.png'),
         },{
             id:'tool5',
-            url:require('../assets/img/text.png'),
+            url:require('../assets/img/avator.png'),
         },{
             id:'tool6',
-            url:require('../assets/img/text.png'),
+            url:require('../assets/img/picture.png'),
         },{
             id:'tool7',
-            url:require('../assets/img/text.png'),
+            url:require('../assets/img/rate.png'),
         },{
             id:'tool8',
-            url:require('../assets/img/text.png'),
+            url:require('../assets/img/date.png'),
         },{
             id:'tool9',
-            url:require('../assets/img/text.png'),
+            url:require('../assets/img/page.png'),
         },{
             id:'tool10',
-            url:require('../assets/img/text.png'),
+            url:require('../assets/img/slider.png'),
+        },{
+            id:'tool11',
+            url:require('../assets/img/rect.png'),
+        },{
+            id:'tool12',
+            url:require('../assets/img/textarea.png'),
+        },{
+            id:'tool13',
+            url:require('../assets/img/search.png'),
+        },{
+            id:'tool14',
+            url:require('../assets/img/carousel.png'),
         },
         ]
       }],
@@ -481,13 +541,47 @@ export default {
           width:100,
           height:30,
           props:' v-model="value"',
-        }
+        },
+        "tool11":{
+          ikey:"tool11",
+          tag:'div',
+          name:'矩形框线',
+          width:100,
+          height:100,
+          props:' style="border : 1px solid black"',
+        },
+        "tool12":{
+          ikey:"tool12",
+          tag:'el-input',
+          name:'文本框',
+          width:200,
+          height:30,
+          props:' type="textarea" placeholder="请输入内容" prefix-icon="el-icon-search" v-model="value" :rows="parseInt(height)/20"'
+        },
+        "tool13":{
+          ikey:"tool13",
+          tag:'div',
+          name:'搜索框',
+          width:200,
+          height:30,
+          inner:'<el-input size="small" placeholder="请输入内容" prefix-icon="el-icon-search" v-model="value"></el-input>',
+        },
+        "tool14":{
+          ikey:"tool14",
+          tag:'el-carousel',
+          name:'走马灯',
+          width:200,
+          height:150,
+          props:' :height="height" trigger="click"',
+          inner:'<el-carousel-item v-for="item in 3" :key="item"><h3 class="small">{{ item }}</h3></el-carousel-item>',
+        },
       }
     }
   },
   mounted() {
     this.$data.sharedURL = window.location.href + '/' + this.$data.teamId + '/' + this.$data.taskId;
      this.getToken();
+     this.getTask();
     if(!this.$data.nonname)this.getSharedStatus();
     this.getCanvas();
     const canvas = this.$refs.tempCanvas;
@@ -719,6 +813,10 @@ export default {
       item.style.height = this.$data.currentComponent.height + 'px';
       item.style.left = this.$data.currentComponent.locationX + 'px';
       item.style.top = this.$data.currentComponent.locationY + 'px';
+      if(item.childNodes[0].__vue__!=undefined){
+        item.childNodes[0].__vue__.$root.$data.height = this.$data.currentComponent.height + 'px';
+        item.childNodes[0].__vue__.$root.$data.width = this.$data.currentComponent.width + 'px';
+      }
       if(this.$data.currentComponent.text != undefined)item.style.fontSize = this.$data.currentComponent.height/3 + 'px';
       if(this.$data.currentComponent.color)item.style.backgroundColor = this.$data.currentComponent.color;
       if(this.$refs.select == undefined)return;
@@ -778,9 +876,23 @@ export default {
         canvas.components[i].style.display = status;
       }
     },
+    printComponents(canvas){
+        var infoList = [];
+        for(var j = 0; j < canvas.components.length; j ++) {
+          infoList.push({
+            locationX:parseInt(canvas.components[j].style.left),
+            locationY:parseInt(canvas.components[j].style.top),
+            height:parseInt(canvas.components[j].style.height),
+            width:parseInt(canvas.components[j].style.width),
+            ikey:canvas.components[j].childNodes[0].__vue__.$root.$data.tag,
+          })
+        }
+        console.log(JSON.stringify(infoList));
+    },
     save() {
       for(var i = 0; i < this.$data.canvasIndexList.length;i++){
         var canvas = this.$data.canvasList[this.$data.canvasIndexList[i]];
+        //this.printComponents(canvas);
         var form = {
             name: this.$data.title + (1000 + i),
             background_color : canvas.color,
@@ -805,14 +917,14 @@ export default {
           this.$data.currentComponent.height = 720;
           break;
         case 2:
-          this.$data.currentComponent.width = 480;
+          this.$data.currentComponent.width = 400;
           this.$data.currentComponent.height = 720;
           break;
         default:
           break;
       }
       this.$data.currentComponent.locationX = window.innerWidth/2 - this.$data.currentComponent.width/2;
-      this.$data.currentComponent.locationY = window.innerHeight/2 - this.$data.currentComponent.height/2;
+      this.$data.currentComponent.locationY = window.innerHeight*27/50 - this.$data.currentComponent.height/2;
       this.$nextTick(()=>{this.updateCurrentComponent();this.updateCurrentCanvasBack()});
       this.$data.canvasInterface = false;
     },
@@ -893,9 +1005,8 @@ export default {
       this.$data.currentComponent = (this.$data.currentTool?null:canva);
       this.$nextTick(()=>{this.updateCurrentComponent()});
     },
-    newPage(page){
-      //从后端申请一个新画布
-      //------------------
+    async newPage(page){
+      this.$data.paging = false;
       var length = this.$data.canvasIndexList.length;
       for(var i = length - 1; i > this.$data.currentCanvasIndex ;i--){
         this.$data.canvasIndexList[i+1] = this.$data.canvasIndexList[i]
@@ -909,12 +1020,12 @@ export default {
         else{
           newCanva = JSON.parse(JSON.stringify(this.$data.defaultCanvas['default']));
           newCanva.locationX = window.innerWidth/2 - newCanva.width/2;
-          newCanva.locationY = window.innerHeight/2 - newCanva.height/2;
+          newCanva.locationY = window.innerHeight*27/50 - newCanva.height/2;
         }
       } else {
         newCanva = JSON.parse(JSON.stringify(this.$data.defaultCanvas[page]));
-          newCanva.locationX = window.innerWidth/2 - newCanva.width/2;
-          newCanva.locationY = window.innerHeight/2 - newCanva.height/2;
+        newCanva.locationX = window.innerWidth/2 - newCanva.width/2;
+        newCanva.locationY = window.innerHeight*27/50 - newCanva.height/2;
       }
       this.$data.canvasList.push(newCanva);
       this.$data.canvasIndexList[this.$data.currentCanvasIndex+1]=this.$data.canvasList.length - 1;
@@ -928,7 +1039,6 @@ export default {
       var canva = this.$data.canvasList[this.$data.canvasIndexList[this.$data.currentCanvasIndex]];
       canva.ref = this.$refs.canvasBack;
       canva.components = [];
-      this.$data.currentComponent = (this.$data.currentTool?null:canva);
       this.$nextTick(()=>{
         canva.mainCanvas = (this.$refs['canvas'+canva.id])[0];
         canva.mainCanvas.width = window.innerWidth;
@@ -941,19 +1051,47 @@ export default {
         "width":canva.width,
         "height":canva.height,
       }
-      this.$http.post('/api/teams/'+ this.$data.teamId + '/tasks/' + this.$data.taskId +'/pages/', form,this.$data.config).then((response)=>{
+      await this.$http.post('/api/teams/'+ this.$data.teamId + '/tasks/' + this.$data.taskId +'/pages/', form,this.$data.config).then((response)=>{
         this.$data.canvasList[this.$data.canvasIndexList[this.$data.currentCanvasIndex]].id = response.data.id;
         console.log("成功创建页面");
         }).catch((error) => {
           this.error('创建页面失败');
           console.log(error);
         });
+      
+        this.$data.currentComponent = (this.$data.currentTool?null:canva);
+          console.log("1213231313")
+          this.updateCurrentComponent();
+        if(this.$data.defaultCanvas[page]!=undefined){
+        for(var i = 0; i < this.$data.defaultCanvas[page].components.length;i++){
+            var pr = this.$data.componentProps[this.$data.defaultCanvas[page].components[i].ikey];
+            var item = {
+              ikey:pr.ikey,
+              tag:pr.tag,
+              name:pr.name,
+              width:this.$data.defaultCanvas[page].components[i].width,
+              height:this.$data.defaultCanvas[page].components[i].height,
+              locationX:this.$data.defaultCanvas[page].components[i].locationX,
+              locationY:this.$data.defaultCanvas[page].components[i].locationY,
+              text:pr.text,
+              options : pr.options,
+              props :pr.props,
+              inner:pr.inner,
+            }
+            this.startDrag(this.$data.currentCanvasIndex,item);
+          }
+        }
+          this.$data.currentComponent = (this.$data.currentTool?null:canva);
+          console.log("1213231313")
+          this.updateCurrentComponent()
     },
-    removeAllComponents(){
+    createDefaultComponents() {
+    },
+    removeAllComponents(all){
       var comps = this.$data.canvasList[this.$data.canvasIndexList[this.$data.currentCanvasIndex]].components;
       var pageId = this.$data.canvasList[this.$data.canvasIndexList[this.$data.currentCanvasIndex]].id;
       for(var i = 0; i < comps.length; i++){
-        this.$nextTick(this.removeById(pageId,comps[i].childNodes[0].__vue__.$root.$data.id));
+        if(all)this.$nextTick(this.removeById(pageId,comps[i].childNodes[0].__vue__.$root.$data.id));
         comps[i].remove();
       }
     },
@@ -962,7 +1100,7 @@ export default {
         this.$message.error("没有页面");
         return;
       }
-      this.$nextTick(this.removeAllComponents());
+      this.$nextTick(this.removeAllComponents(false));
       var url = '/api/teams/'+ this.$data.teamId + '/tasks/' + this.$data.taskId +'/pages/'+ this.$data.canvasList[this.$data.canvasIndexList[this.$data.currentCanvasIndex]].id+'/';
         this.$http.delete(url,this.$data.config).then((response)=>{
             console.log('删除成功');
@@ -1018,7 +1156,7 @@ export default {
       var parDiv = this.$refs.canvasBack;
       var newDiv = document.createElement('div')
       parDiv.appendChild(newDiv);
-      this.$data.currentComponent = {
+      var comp = {
         id:'',
         name:'属性',
         locationX:item.locationX==undefined?0:item.locationX,
@@ -1032,11 +1170,11 @@ export default {
         newDiv.style.display="block";
         newDiv.style.zIndex=5;
         newDiv.style.position = "absolute";
-        newDiv.style.width = this.$data.currentComponent.width + 'px';
-        newDiv.style.height = this.$data.currentComponent.height + 'px';
-        newDiv.style.left = this.$data.currentComponent.locationX + 'px';
-        newDiv.style.top = this.$data.currentComponent.locationY + 'px';
-        if(item.text!=undefined)newDiv.style.fontSize = this.$data.currentComponent.height/3 + 'px';
+        newDiv.style.width = comp.width + 'px';
+        newDiv.style.height = comp.height + 'px';
+        newDiv.style.left = comp.locationX + 'px';
+        newDiv.style.top = comp.locationY + 'px';
+        if(item.text!=undefined)newDiv.style.fontSize = comp.height/3 + 'px';
         // if(item.size != undefined)newDiv.style.fontSize = item.size + 'px';
         this.$data.canvasList[this.$data.canvasIndexList[canvasIndex]].components.push(newDiv);
         newDiv.addEventListener('click',(event)=>{
@@ -1065,6 +1203,8 @@ export default {
             return {
               id:item.id,
               tag:item.ikey,
+              width:item.width + 'px',
+              height:item.height + 'px',
               // size:item.size,
               ctext:item.text,
               value:'',
@@ -1089,27 +1229,46 @@ export default {
         img.style.height="100%";
         img.style.pointerEvents="none";
       }
+      this.$data.currentComponent = comp;
       if(item.id == undefined) {
         var form = {
           component_type: item.ikey,
-          name: this.$data.currentComponent.text==undefined?item.tag:this.$data.currentComponent.text,
-          x_position :this.$data.currentComponent.locationX,
-          y_position :this.$data.currentComponent.locationY,
-          width : this.$data.currentComponent.width,
-          height : this.$data.currentComponent.height,
+          name: comp.text==undefined?item.tag:comp.text,
+          x_position :comp.locationX,
+          y_position :comp.locationY,
+          width : comp.width,
+          height : comp.height,
         }
         var url = '/api/teams/'+ this.$data.teamId + '/tasks/' + this.$data.taskId +'/pages/'+ this.$data.canvasList[this.$data.canvasIndexList[this.$data.currentCanvasIndex]].id +'/components/';
-        this.$http.post(url, form,this.$data.config).then((response)=>{
-          console.log('创建组件成功');
-          this.$data.currentComponent.ref.childNodes[0].__vue__.$root.$data.id = response.data.id; 
-        }).catch((error) => {
+        return this.$http.post(url, form,this.$data.config).then(response=>{this.setComponentId(response,comp)}).catch((error) => {
           this.error('创建组件失败');
           console.log(error);
         });
       }
+      return;
     },
-    getTitle(data){
+    setComponentId(response, comp) {
+      comp.ref.childNodes[0].__vue__.$root.$data.id = response.data.id; 
+    },
+    getTitle(data) {
       this.$data.title = data;
+      var form = {
+        title:data,
+      }
+      this.$http.put('/api/teams/'+ this.$data.teamId + '/tasks/' + this.$data.taskId +'/', form,this.$data.config).then((response)=>{ 
+          console.log('修改成功');
+        }).catch((error) => {
+          console.log('失败')
+        });
+    },
+    getTask(){
+      this.$http.get('/api/teams/'+ this.$data.teamId + '/tasks/' + this.$data.taskId +'/', this.$data.config).then((response)=>{ 
+          this.$data.task = response.data;
+          this.$data.title = response.data.title;
+          this.$refs['title'].title = response.data.title;
+        }).catch((error) => {
+          console.log('获取任务信息失败')
+        });
     },
     reset(){
         const ctx = this.$data.canvasList[this.$data.canvasIndexList[this.$data.currentCanvasIndex]].mainCanvas.getContext('2d');
@@ -1121,8 +1280,7 @@ export default {
       this.$http.delete('/api/teams/'+ this.$data.teamId + '/tasks/' + this.$data.taskId +'/pages/'+ pageId + '/components/' + componentId + '/', this.$data.config).then((response)=>{ 
           console.log('成功删除组件')
         }).catch((error) => {
-          this.error('删除失败');
-          console.log(error);
+          console.log('删除组件失败')
         });
     },
     remove(){
@@ -1163,7 +1321,7 @@ export default {
     getToken() {
       var form = {username:"charlie",password:"1111"};
       this.$http.post('/api/login/', form).then((response)=>{
-        console.log("登录 "+ this.$data.config.headers.Authorization)
+        //console.log("登录 "+ this.$data.config.headers.Authorization)
           this.$data.config.headers.Authorization = 'Token ' + response.data.token;  
         }).catch((error) => {
           this.error('1');
@@ -1174,16 +1332,16 @@ export default {
       this.$http.get('/api/teams/'+ this.$data.teamId + '/tasks/' + this.$data.taskId +'/pages/' + this.$data.canvasList[this.$data.canvasIndexList[canvasIndex]].id + '/components/',this.$data.config).then((response)=>{
         for(var j = 0; j < response.data.length; j++) {
           var pr = this.$data.componentProps[response.data[j].component_type];
-          console.log(response.data[j].component_type);
           var item = {
             id:response.data[j].id,
+            ikey:pr.ikey,
             tag:pr.tag,
             name:'属性',
             width:response.data[j].width,
             height:response.data[j].height,
             locationX:response.data[j].x_position,
             locationY:response.data[j].y_position,
-            text:pr.text,
+            text:pr.text==undefined?undefined:response.data[j].name,
             options : pr.options,
             props :pr.props,
             inner:pr.inner,
@@ -1197,7 +1355,6 @@ export default {
     },
     setSharedStatus(status) {
       var url = '/api/task/'+ this.$data.taskId + '/set_' + (status?'shared':'private') + '/';
-      console.log(this.$data.config);
       this.$http.post(url,{},this.$data.config).then((response)=>{
           console.log('修改分享权限成功' + status);
         }).catch((error) => {
@@ -1236,7 +1393,7 @@ export default {
               components:[],
             }
             newCanva.locationX = window.innerWidth/2 - newCanva.width/2;
-            newCanva.locationY = window.innerHeight/2 - newCanva.height/2;
+            newCanva.locationY = window.innerHeight*27/50 - newCanva.height/2;
             this.$data.canvasIndexList[i] = this.$data.canvasList.length;
             this.$data.canvasList.push(newCanva);
             this.$data.currentCanvasIndex = i;
